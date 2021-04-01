@@ -1,0 +1,9 @@
+# Server configurations
+server:
+  host: "localhost"
+  port: 10000
+
+# Telegram configuration
+telegram:
+  chatid: 
+  token: ""
