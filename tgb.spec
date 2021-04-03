@@ -12,16 +12,9 @@ Group:          System/Management
 URL:            https://github.com/bzoltan1/trg
 Source:         %{name}-%{version}.tar.gz
 BuildRequires:  golang-packaging
-BuildRequires:  golang(API) = 1.14
-BuildRequires:  golang(github.com/gorilla/mux) >= 0-0.13
-BuildRequires:  golang(github.com/go-telegram-bot-api/telegram-bot-api)
-BuildRequires:  golang(gopkg.in/yaml.v2)
-BuildRequires:  golang(fmt)
-BuildRequires:  golang(log)
-BuildRequires:  golang(encoding/json)
-BuildRequires:  golang(net/http)
-BuildRequires:  golang(io/ioutil)
 
+%{go_nostrip}
+%{go_provides}
 
 %description
 Telegram bridge service for any user or process to send warnings, alerts
@@ -35,16 +28,17 @@ to a configured Telegram user.
 rm -rf vendor
 
 %build
-# set up temporary build gopath, and put our directory there
-mkdir -p ./_build/src/github.com/bzoltan1
-ln -s $(pwd) ./_build/src/github.com/bzoltan1/tgb
+%goprep %{import_path}
+%gobuild ...
 
-export GOPATH=$(pwd)/_build:%{gopath}
-go build -o tgb .
 
 %install
-install -d %{buildroot}%{_bindir}
-install -p -m 0755 ./tgb %{buildroot}%{_bindir}/tgb
+%goinstall
+%gosrc
+%gofilelist
+
+%check
+%gotest %{import_path}...
 
 %files
 %defattr(-,root,root,-)
