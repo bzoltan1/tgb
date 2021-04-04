@@ -39,8 +39,8 @@ to a configured Telegram user.
 
 %install
 %goinstall
-%gosrc
-%gofilelist
+%fdupes %{buildroot}
+
 
 %files
 %defattr(-,root,root,-)
