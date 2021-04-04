@@ -39,12 +39,29 @@ to a configured Telegram user.
 
 %install
 %goinstall
+install -D -m 644 tgb.yaml %{buildroot}%{_sysconfdir}/tgb.yaml
+install -D -m 0644 tgb.service %{buildroot}%{_unitdir}/tgb.service
 
+%pre
+%service_add_pre tgb.service
+
+%preun
+%service_del_preun tgb.service
+
+%post
+%service_add_post tgb.service
+
+%postun
+%service_del_postun tgb.service
 
 %files
 %defattr(-,root,root,-)
 %doc LICENSE README.md
+%{_unitdir}/tgb.service
 %{_bindir}/tgb
+%config(noreplace) %{_sysconfdir}/tgb.yaml
+
+
 
 %changelog
 * Sat Apr 02 2021 Zoltán Balogh <zoltan@bakter.hu> - 0.1-1
