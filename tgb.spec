@@ -42,9 +42,6 @@ to a configured Telegram user.
 %gosrc
 %gofilelist
 
-%check
-%gotest %{import_path}...
-
 %files
 %defattr(-,root,root,-)
 %doc LICENSE README.md
