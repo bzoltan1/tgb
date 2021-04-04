@@ -52,7 +52,7 @@ var err error
 var c Configuration
 
 func (c *Configuration) getConfiguration() *Configuration {
-	yamlFile, err := ioutil.ReadFile("tgb.yaml")
+	yamlFile, err := ioutil.ReadFile("/etc/tgb.yaml")
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 	}
