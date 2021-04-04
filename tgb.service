@@ -1,0 +1,14 @@
+[Unit]
+Description=Start the tgb server daemon
+After=network.target
+ConditionPathExists=/etc/tgb.yaml
+
+[Service]
+ExecStart=/usr/bin/tgb
+IOSchedulingClass=idle
+CPUSchedulingPolicy=batch
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
