@@ -16,7 +16,6 @@ License:        LGPL-2.1-or-later
 Group:          System/Management
 URL:            https://github.com/bzoltan1/trg
 Source:         %{name}-%{version}.tar.gz
-Source1:        vendor.tar.gz
 BuildRequires:  golang-packaging
 
 %{go_nostrip}
@@ -34,7 +33,7 @@ to a configured Telegram user.
 
 %build
 %goprep %{import_path}
-%gobuild -mod=vendor "" ...
+%gobuild ...
 
 
 %install
