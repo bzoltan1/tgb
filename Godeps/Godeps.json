@@ -1,0 +1,27 @@
+{
+	"ImportPath": "tgb-leap",
+	"GoVersion": "go1.15",
+	"GodepVersion": "v80",
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-telegram-bot-api/telegram-bot-api",
+			"Comment": "v5.0.1-37-g54104a0",
+			"Rev": "54104a08f947e08c460c45d195076e48e61f0a26"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Comment": "v1.8.0-1-gd07530f",
+			"Rev": "d07530f46e1eec4e40346e24af34dcc6750ad39f"
+		},
+		{
+			"ImportPath": "github.com/technoweenie/multipartstreamer",
+			"Comment": "v1.0.1",
+			"Rev": "a90a01d73ae432e2611d178c18367fbaa13e0154"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Comment": "v2.4.0",
+			"Rev": "7649d4548cb53a614db133b2a8ac1f31859dda8c"
+		}
+	]
+}
