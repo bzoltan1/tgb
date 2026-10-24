@@ -19,7 +19,7 @@
 %define goflags "-buildmode=pie -trimpath -mod=vendor -modcacherw"
 %define goipath    %{_libexecdir}/go
 Name:           tgb
-Version:        0.2
+Version:        0.3
 Release:        0
 Summary:        Telegram bridge service
 License:        LGPL-2.1-or-later

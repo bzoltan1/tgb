@@ -2,6 +2,11 @@
 server:
   host: "localhost"
   port: 10000
+  # Optional shared secret. When set, /send requires
+  #   Authorization: Bearer <auth_token>
+  # or
+  #   X-Auth-Token: <auth_token>
+  auth_token: ""
 
 # Telegram configuration
 telegram:

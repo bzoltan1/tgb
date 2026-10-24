@@ -8,3 +8,22 @@ But anything can send Telegram messages by a simple Rest API call to the server
 ```
 $ curl --request POST   --data '{"sender":"curl","content":"Article Content"}'   http://localhost:10000/send
 ```
+
+## Configuration
+tgb reads `/etc/tgb.yaml` by default. Use `-config <path>` or the
+`TGB_CONFIG` environment variable to point it elsewhere.
+
+`server.auth_token` is optional. When set, every POST to `/send` must
+carry the same value, either as a bearer token or as `X-Auth-Token`.
+With an empty token the endpoint is unauthenticated (backward compatible),
+and tgb logs a warning at startup.
+
+```
+$ curl --request POST \
+    -H "Authorization: Bearer <auth_token>" \
+    --data '{"sender":"curl","content":"Article Content"}' \
+    http://localhost:10000/send
+```
+
+The service binds to `server.host` (default `127.0.0.1` if unset), so it is
+not exposed on other interfaces unless configured explicitly.

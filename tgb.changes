@@ -1,4 +1,13 @@
 -------------------------------------------------------------------
+Sat Oct 24 15:05:00 UTC 2026 - Zoltan Balogh <zbalogh@suse.com>
+
+- 0.3
+- Bind to server.host instead of all interfaces
+- Add optional server.auth_token for /send
+- Add HTTP timeouts and a request body limit
+- Add -config flag and TGB_CONFIG environment variable
+
+-------------------------------------------------------------------
 Thu Nov  9 18:37:55 UTC 2023 - Zoltan Balogh <zbalogh@suse.com>
 
 - 0.2
