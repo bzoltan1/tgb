@@ -19,50 +19,34 @@ import (
 	"github.com/technoweenie/multipartstreamer"
 )
 
-type HttpClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // BotAPI allows you to interact with the Telegram Bot API.
 type BotAPI struct {
 	Token  string `json:"token"`
 	Debug  bool   `json:"debug"`
 	Buffer int    `json:"buffer"`
 
-	Self            User       `json:"-"`
-	Client          HttpClient `json:"-"`
+	Self   User         `json:"-"`
+	Client *http.Client `json:"-"`
 	shutdownChannel chan interface{}
-
-	apiEndpoint string
 }
 
 // NewBotAPI creates a new BotAPI instance.
 //
 // It requires a token, provided by @BotFather on Telegram.
 func NewBotAPI(token string) (*BotAPI, error) {
-	return NewBotAPIWithClient(token, APIEndpoint, &http.Client{})
-}
-
-// NewBotAPIWithAPIEndpoint creates a new BotAPI instance
-// and allows you to pass API endpoint.
-//
-// It requires a token, provided by @BotFather on Telegram and API endpoint.
-func NewBotAPIWithAPIEndpoint(token, apiEndpoint string) (*BotAPI, error) {
-	return NewBotAPIWithClient(token, apiEndpoint, &http.Client{})
+	return NewBotAPIWithClient(token, &http.Client{})
 }
 
 // NewBotAPIWithClient creates a new BotAPI instance
 // and allows you to pass a http.Client.
 //
-// It requires a token, provided by @BotFather on Telegram and API endpoint.
-func NewBotAPIWithClient(token, apiEndpoint string, client HttpClient) (*BotAPI, error) {
+// It requires a token, provided by @BotFather on Telegram.
+func NewBotAPIWithClient(token string, client *http.Client) (*BotAPI, error) {
 	bot := &BotAPI{
-		Token:           token,
-		Client:          client,
-		Buffer:          100,
+		Token:  token,
+		Client: client,
+		Buffer: 100,
 		shutdownChannel: make(chan interface{}),
-
-		apiEndpoint: apiEndpoint,
 	}
 
 	self, err := bot.GetMe()
@@ -75,22 +59,11 @@ func NewBotAPIWithClient(token, apiEndpoint string, client HttpClient) (*BotAPI,
 	return bot, nil
 }
 
-// SetAPIEndpoint add telegram apiEndpont to Bot
-func (bot *BotAPI) SetAPIEndpoint(apiEndpoint string) {
-	bot.apiEndpoint = apiEndpoint
-}
-
 // MakeRequest makes a request to a specific endpoint with our token.
 func (bot *BotAPI) MakeRequest(endpoint string, params url.Values) (APIResponse, error) {
-	method := fmt.Sprintf(bot.apiEndpoint, bot.Token, endpoint)
+	method := fmt.Sprintf(APIEndpoint, bot.Token, endpoint)
 
-	req, err := http.NewRequest("POST", method, strings.NewReader(params.Encode()))
-	if err != nil {
-		return APIResponse{}, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := bot.Client.Do(req)
+	resp, err := bot.Client.PostForm(method, params)
 	if err != nil {
 		return APIResponse{}, err
 	}
@@ -111,7 +84,7 @@ func (bot *BotAPI) MakeRequest(endpoint string, params url.Values) (APIResponse,
 		if apiResp.Parameters != nil {
 			parameters = *apiResp.Parameters
 		}
-		return apiResp, Error{Code: apiResp.ErrorCode, Message: apiResp.Description, ResponseParameters: parameters}
+		return apiResp, Error{apiResp.Description, parameters}
 	}
 
 	return apiResp, nil
@@ -213,7 +186,7 @@ func (bot *BotAPI) UploadFile(endpoint string, params map[string]string, fieldna
 		return APIResponse{}, errors.New(ErrBadFileType)
 	}
 
-	method := fmt.Sprintf(bot.apiEndpoint, bot.Token, endpoint)
+	method := fmt.Sprintf(APIEndpoint, bot.Token, endpoint)
 
 	req, err := http.NewRequest("POST", method, nil)
 	if err != nil {
@@ -245,11 +218,7 @@ func (bot *BotAPI) UploadFile(endpoint string, params map[string]string, fieldna
 	}
 
 	if !apiResp.Ok {
-		parameters := ResponseParameters{}
-		if apiResp.Parameters != nil {
-			parameters = *apiResp.Parameters
-		}
-		return apiResp, Error{Code: apiResp.ErrorCode, Message: apiResp.Description, ResponseParameters: parameters}
+		return APIResponse{}, errors.New(apiResp.Description)
 	}
 
 	return apiResp, nil
@@ -461,7 +430,7 @@ func (bot *BotAPI) GetUpdates(config UpdateConfig) ([]Update, error) {
 
 // RemoveWebhook unsets the webhook.
 func (bot *BotAPI) RemoveWebhook() (APIResponse, error) {
-	return bot.MakeRequest("deleteWebhook", url.Values{})
+	return bot.MakeRequest("setWebhook", url.Values{})
 }
 
 // SetWebhook sets a webhook.
@@ -518,11 +487,10 @@ func (bot *BotAPI) GetUpdatesChan(config UpdateConfig) (UpdatesChannel, error) {
 		for {
 			select {
 			case <-bot.shutdownChannel:
-				close(ch)
 				return
 			default:
 			}
-
+			
 			updates, err := bot.GetUpdates(config)
 			if err != nil {
 				log.Println(err)
@@ -557,35 +525,15 @@ func (bot *BotAPI) ListenForWebhook(pattern string) UpdatesChannel {
 	ch := make(chan Update, bot.Buffer)
 
 	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		update, err := bot.HandleUpdate(r)
-		if err != nil {
-			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
-			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write(errMsg)
-			return
-		}
+		bytes, _ := ioutil.ReadAll(r.Body)
 
-		ch <- *update
+		var update Update
+		json.Unmarshal(bytes, &update)
+
+		ch <- update
 	})
 
 	return ch
-}
-
-// HandleUpdate parses and returns update received via webhook
-func (bot *BotAPI) HandleUpdate(r *http.Request) (*Update, error) {
-	if r.Method != http.MethodPost {
-		err := errors.New("wrong HTTP method required POST")
-		return nil, err
-	}
-
-	var update Update
-	err := json.NewDecoder(r.Body).Decode(&update)
-	if err != nil {
-		return nil, err
-	}
-
-	return &update, nil
 }
 
 // AnswerInlineQuery sends a response to an inline query.
@@ -783,9 +731,9 @@ func (bot *BotAPI) UnbanChatMember(config ChatMemberConfig) (APIResponse, error)
 }
 
 // RestrictChatMember to restrict a user in a supergroup. The bot must be an
-// administrator in the supergroup for this to work and must have the
-// appropriate admin rights. Pass True for all boolean parameters to lift
-// restrictions from a user. Returns True on success.
+//administrator in the supergroup for this to work and must have the
+//appropriate admin rights. Pass True for all boolean parameters to lift
+//restrictions from a user. Returns True on success.
 func (bot *BotAPI) RestrictChatMember(config RestrictChatMemberConfig) (APIResponse, error) {
 	v := url.Values{}
 
@@ -905,7 +853,7 @@ func (bot *BotAPI) AnswerPreCheckoutQuery(config PreCheckoutConfig) (APIResponse
 	v.Add("pre_checkout_query_id", config.PreCheckoutQueryID)
 	v.Add("ok", strconv.FormatBool(config.OK))
 	if config.OK != true {
-		v.Add("error_message", config.ErrorMessage)
+		v.Add("error", config.ErrorMessage)
 	}
 
 	bot.debugLog("answerPreCheckoutQuery", v, nil)
@@ -1016,80 +964,4 @@ func (bot *BotAPI) DeleteChatPhoto(config DeleteChatPhotoConfig) (APIResponse, e
 	bot.debugLog(config.method(), v, nil)
 
 	return bot.MakeRequest(config.method(), v)
-}
-
-// GetStickerSet get a sticker set.
-func (bot *BotAPI) GetStickerSet(config GetStickerSetConfig) (StickerSet, error) {
-	v, err := config.values()
-	if err != nil {
-		return StickerSet{}, err
-	}
-	bot.debugLog(config.method(), v, nil)
-	res, err := bot.MakeRequest(config.method(), v)
-	if err != nil {
-		return StickerSet{}, err
-	}
-	stickerSet := StickerSet{}
-	err = json.Unmarshal(res.Result, &stickerSet)
-	if err != nil {
-		return StickerSet{}, err
-	}
-	return stickerSet, nil
-}
-
-// GetMyCommands gets the current list of the bot's commands.
-func (bot *BotAPI) GetMyCommands() ([]BotCommand, error) {
-	res, err := bot.MakeRequest("getMyCommands", nil)
-	if err != nil {
-		return nil, err
-	}
-	var commands []BotCommand
-	err = json.Unmarshal(res.Result, &commands)
-	if err != nil {
-		return nil, err
-	}
-	return commands, nil
-}
-
-// SetMyCommands changes the list of the bot's commands.
-func (bot *BotAPI) SetMyCommands(commands []BotCommand) error {
-	v := url.Values{}
-	data, err := json.Marshal(commands)
-	if err != nil {
-		return err
-	}
-	v.Add("commands", string(data))
-	_, err = bot.MakeRequest("setMyCommands", v)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// EscapeText takes an input text and escape Telegram markup symbols.
-// In this way we can send a text without being afraid of having to escape the characters manually.
-// Note that you don't have to include the formatting style in the input text, or it will be escaped too.
-// If there is an error, an empty string will be returned.
-//
-// parseMode is the text formatting mode (ModeMarkdown, ModeMarkdownV2 or ModeHTML)
-// text is the input string that will be escaped
-func EscapeText(parseMode string, text string) string {
-	var replacer *strings.Replacer
-
-	if parseMode == ModeHTML {
-		replacer = strings.NewReplacer("<", "&lt;", ">", "&gt;", "&", "&amp;")
-	} else if parseMode == ModeMarkdown {
-		replacer = strings.NewReplacer("_", "\\_", "*", "\\*", "`", "\\`", "[", "\\[")
-	} else if parseMode == ModeMarkdownV2 {
-		replacer = strings.NewReplacer(
-			"_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(",
-			"\\(", ")", "\\)", "~", "\\~", "`", "\\`", ">", "\\>",
-			"#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|",
-			"\\|", "{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!",
-		)
-	} else {
-		return ""
-	}
-
-	return replacer.Replace(text)
 }
